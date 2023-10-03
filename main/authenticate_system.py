@@ -1,4 +1,5 @@
 import hashlib
+import re
 
 class AuthenticationSystem():
     """
@@ -34,6 +35,31 @@ class AuthenticationSystem():
         """
         hashed_password = self._hash_password(password)     # generating the hash
         self.user_credentials[username] = hashed_password   # storing the hash
+
+    def check_password_strength(self, password):
+        """ 
+        Check the strengthof the password based on the length and complexity criteria
+        
+        Args:
+            password (str): The password to be checked for strength
+        
+        Returns:
+            str: A indicating the password strength
+        """
+        passed = True
+        length_criteria = 8
+        complexity_criteria = r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]'
+
+        if len(password) < length_criteria:
+            print("Password is too short.\nIt must be at least  8 characters long")
+            return not passed
+
+        if not re.match(complexity_criteria, password):
+            "Password is not too complex enough.\nIt must at least contain one special character and one digit."
+            return not passed
+
+        return passed
+
 
     def authenticate_usesr(self, username, password):
         """
