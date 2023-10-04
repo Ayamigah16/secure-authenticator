@@ -1,6 +1,7 @@
 import hashlib
 import re
 import sqlite3
+import logging
 
 class AuthenticationSystem():
     """
@@ -11,6 +12,12 @@ class AuthenticationSystem():
         # storing the data in a database
         self.db_path = db_path
         self._create_table_if_not_exists()
+
+    def _setup_logging(self):
+        logging.basicConfig(filename="authentication.log",
+                            level=logging.INFO,
+                            format="%(asctime)s - %(levelname)s - %(message)s")
+
         
 
     def _create_table_if_not_exists(self):
@@ -115,9 +122,15 @@ class AuthenticationSystem():
         if result:
             stored_hashed_password = result[0]
             entered_password_hash = self._hash_password(password)
-            return entered_password_hash == stored_hashed_password
+            if entered_password_hash == stored_hashed_password:
+                logging.info(f"Authentication succesful for user: {username}")
+                return True
+            else:
+                logging.warning(f"Authentication failed for user: {username}")
+                return False
         else:
-            return False
+            logging.warning(f"User not found: {username}")
+        
 
         # stored_passsword_hash = self.user_credentials.get(username)      # getting the stored hash
         # if stored_passsword_hash:
@@ -157,5 +170,3 @@ class AuthenticationSystem():
         conn.commit()
         conn.close()
 
-
-    
