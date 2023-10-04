@@ -65,7 +65,8 @@ class AuthenticationSystem():
             VALUES (?, ?, ?)
         """, (username, password, hashed_password)
         )
-        
+        conn.commit()
+        conn.close()
 
         # hashed_password = self._hash_password(password)     # generating the hash
         # self.user_credentials[username] = hashed_password   # storing the hash
@@ -124,4 +125,37 @@ class AuthenticationSystem():
         #     return entered_password_hash == stored_passsword_hash
         # else:
         #     False
+
+    
+    def update_password(self, username, new_password):
+        """ 
+        Updates the users password.
+
+        Args:
+            username (str): name of the user
+            new_password (str): new password to update the old one
+        
+        Return:
+            None
+        """
+        self.check_password_strength(new_password)
+        hashed_password = self._hash_password(new_password)
+
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor() 
+        cursor.excute("UPDATE users SET hashed_password = ? WHERE username = ?", (hashed_password, username,))
+        conn.commit()
+        conn.close()
+
+    def remove_user(self, username):
+        """ 
+        Removes a user's credentials from the database
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor() 
+        cursor.excute("DELETE FROM users WHERE username = ?", (username,))
+        conn.commit()
+        conn.close()
+
+
     
