@@ -14,7 +14,7 @@ def main():
     strength_result = auth_system.check_password_strength(entered_password)
     print(strength_result)
 
-    if auth_system.authenticate_usesr(entered_username, entered_password):
+    if auth_system.authenticate_user(entered_username, entered_password):
         print("Authentication successful!")
     else:
         print("Authentication failed")

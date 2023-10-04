@@ -1,14 +1,32 @@
 import hashlib
 import re
+import sqlite3
 
 class AuthenticationSystem():
     """
     Implementation of the AthenticationSystem using hashing
     """
 
-    def __init__(self):
-        # a data structure to store user credentials
-        self.user_credentials = {}
+    def __init__(self, db_path="credentials.db"):
+        # storing the data in a database
+        self.db_path = db_path
+        self._create_table_if_not_exists()
+        
+
+    def _create_table_if_not_exists(self):
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+        """
+            CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            password TEXT,
+            hashed_password TEXT
+            )
+        """
+        )
+        conn.commit()
+        conn.close()
 
     def _hash_password(self, password):
         """
@@ -33,8 +51,24 @@ class AuthenticationSystem():
         Return:
             None
         """
-        hashed_password = self._hash_password(password)     # generating the hash
-        self.user_credentials[username] = hashed_password   # storing the hash
+        password_strength = self.check_password_strength(password)
+        if not password_strength:
+            return
+
+        hashed_password = self._hash_password(password)
+
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+        """
+            INSERT INTO users (username, password, hashed_password)
+            VALUES (?, ?, ?)
+        """, (username, password, hashed_password)
+        )
+        
+
+        # hashed_password = self._hash_password(password)     # generating the hash
+        # self.user_credentials[username] = hashed_password   # storing the hash
 
     def check_password_strength(self, password):
         """ 
@@ -44,24 +78,23 @@ class AuthenticationSystem():
             password (str): The password to be checked for strength
         
         Returns:
-            str: A indicating the password strength
+           bool : A indicating the password strength
         """
         passed = True
         length_criteria = 8
         complexity_criteria = r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]'
 
         if len(password) < length_criteria:
-            print("Password is too short.\nIt must be at least  8 characters long")
-            return not passed
+            #print()
+            return "Password is too short.\nIt must be at least  8 characters long"
 
-        if not re.match(complexity_criteria, password):
-            "Password is not too complex enough.\nIt must at least contain one special character and one digit."
-            return not passed
+        if not re.match(complexity_criteria, password):            
+            return "Password is not too complex enough.\nIt must at least contain one special character and one digit."
 
         return passed
 
 
-    def authenticate_usesr(self, username, password):
+    def authenticate_user(self, username, password):
         """
         Authenticate a user by comparing the entered password with the stored hased password
 
@@ -72,10 +105,23 @@ class AuthenticationSystem():
         Returns:
             bool: True if authentication is succeessful, False if authentication fails
         """
-        stored_passsword_hash = self.user_credentials.get(username)      # getting the stored hash
-        if stored_passsword_hash:
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT hashed_password FROM users WHERE username = ?", (username,))
+        result = cursor.fetchone()
+        conn.close()
+
+        if result:
+            stored_hashed_password = result[0]
             entered_password_hash = self._hash_password(password)
-            return entered_password_hash == stored_passsword_hash
+            return entered_password_hash == stored_hashed_password
         else:
-            False
+            return False
+
+        # stored_passsword_hash = self.user_credentials.get(username)      # getting the stored hash
+        # if stored_passsword_hash:
+        #     entered_password_hash = self._hash_password(password)
+        #     return entered_password_hash == stored_passsword_hash
+        # else:
+        #     False
     
