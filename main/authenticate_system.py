@@ -2,6 +2,8 @@ import hashlib
 import re
 import sqlite3
 import logging
+import getpass
+from tkinter import messagebox
 
 class AuthenticationSystem():
     """
@@ -58,9 +60,8 @@ class AuthenticationSystem():
         Return:
             None
         """
-        password_strength = self.check_password_strength(password)
-        if not password_strength:
-            return
+        while not True:
+            self.check_password_strength(password)
 
         hashed_password = self._hash_password(password)
 
@@ -92,12 +93,9 @@ class AuthenticationSystem():
         length_criteria = 8
         complexity_criteria = r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]'
 
-        if len(password) < length_criteria:
-            #print()
-            return "Password is too short.\nIt must be at least  8 characters long"
-
-        if not re.match(complexity_criteria, password):            
-            return "Password is not too complex enough.\nIt must at least contain one special character and one digit."
+        if len(password) < length_criteria or not re.match(complexity_criteria, password):
+            print("Password must be minimum of 8 characters and must at least contain one special character and one digit")
+            return not passed
 
         return passed
 
@@ -113,11 +111,14 @@ class AuthenticationSystem():
         Returns:
             bool: True if authentication is succeessful, False if authentication fails
         """
+        while not True:
+            self.check_password_strength(password)
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute("SELECT hashed_password FROM users WHERE username = ?", (username,))
         result = cursor.fetchone()
-        conn.close()
+        conn.close()        
 
         if result:
             stored_hashed_password = result[0]
@@ -170,3 +171,14 @@ class AuthenticationSystem():
         conn.commit()
         conn.close()
 
+    # Function to handle registration
+    def register_user_gui(self, username, password):
+        self.register_user(username, password)
+        messagebox.showinfo("Registration", "User registered successfully.")
+
+    # Function to handle authentication
+    def authenticate_user_gui(self, username, password):        
+        if self.authenticate_user(username, password):
+            messagebox.showinfo("Authentication", "Authentication successful!")
+        else:
+            messagebox.showerror("Authentication", "Authentication failed.")
