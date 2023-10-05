@@ -11,10 +11,15 @@ class AuthenticationSystem():
     """
     Implementation of the AthenticationSystem using hashing
     """
-    def __init__(self, db_path="credentials.db"):
-        # storing the data in a database
+    def __init__(self, username, password,db_path = "credentials.db", max_attempts=3, lock_duration=10):
+        self.username_entry = username
+        self.password_entry = password
         self.db_path = db_path
+        self.max_attempts = max_attempts  # Maximum allowed unsuccessful login attempts
+        self.lock_duration = lock_duration  # Lock duration in seconds
+        self.user_attempts = {}  # Dictionary to store login attempts for each user
         self._create_table_if_not_exists()
+        # ... (rest of the code)
 
     def generate_otp(self):
         # Generate a random 6-digit OTP
@@ -176,36 +181,58 @@ class AuthenticationSystem():
         conn.close()
 
     # Function to handle registration
-    def register_user_gui(self, username, password):
+    def register_user_gui(self):
+        username = self.username_entry
+        password = self.password_entry
+
         # Generate an OTP and store it for the user
-        otp = self.generate_otp()
-        self.user_otp[username] = otp
+        #otp = self.generate_otp()
+        #self.user_otp[username] = otp
 
         self.register_user(username, password)
         messagebox.showinfo("Registration", "User registered successfully.")
 
-    # Function to handle authentication
+   # Function to handle authentication
     def authenticate_user_gui(self):
-        username = self.username_entry.get()
+        username = self.username_entry
         password = getpass.getpass("Enter password: ")
 
         # Check if the user exists and get stored OTP
         if self.user_exists(username):
-            stored_otp = self.user_otp.get(username)
-            entered_otp = input("Enter OTP: ")
-
-            stored_password_hash = self._hash_password(password)
-            entered_password_hash = self._hash_password(password + stored_otp)
-
-            if entered_password_hash == stored_password_hash and entered_otp == stored_otp:
-                logging.info(f'Authentication successful for user: {username}')
-                messagebox.showinfo("Authentication", "Authentication successful!")
+            if self.is_account_locked(username):
+                logging.warning(f'Account temporarily locked for user: {username}')
+                messagebox.showerror("Authentication", f"Account temporarily locked. Try again later.")
             else:
-                logging.warning(f'Authentication failed for user: {username}')
-                messagebox.showerror("Authentication", "Authentication failed.")
+                stored_otp = self.user_otp.get(username)
+                entered_otp = input("Enter OTP: ")
+
+                stored_password_hash = self._hash_password(password)
+                entered_password_hash = self._hash_password(password + stored_otp)
+
+                if entered_password_hash == stored_password_hash and entered_otp == stored_otp:
+                    logging.info(f'Authentication successful for user: {username}')
+                    self.reset_login_attempts(username)  # Reset login attempts on successful login
+                    messagebox.showinfo("Authentication", "Authentication successful!")
+                else:
+                    logging.warning(f'Authentication failed for user: {username}')
+                    self.increment_login_attempts(username)  # Increment login attempts on failure
+                    messagebox.showerror("Authentication", "Authentication failed.")
         else:
             logging.warning(f'User not found: {username}')
             messagebox.showerror("Authentication", "User not found.")
+
+    def increment_login_attempts(self, username):
+        self.user_attempts.setdefault(username, 0)
+        self.user_attempts[username] += 1
+
+    def reset_login_attempts(self, username):
+        if username in self.user_attempts:
+            del self.user_attempts[username]
+
+    def is_account_locked(self, username):
+        if username in self.user_attempts:
+            return self.user_attempts[username] >= self.max_attempts
+        return False
 
     # Function to handle password recovery simulation
     def reset_password_gui(self):
