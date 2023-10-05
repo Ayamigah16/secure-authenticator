@@ -4,22 +4,26 @@ import sqlite3
 import logging
 import getpass
 from tkinter import messagebox
+import random
+import string
 
 class AuthenticationSystem():
     """
     Implementation of the AthenticationSystem using hashing
     """
-
     def __init__(self, db_path="credentials.db"):
         # storing the data in a database
         self.db_path = db_path
         self._create_table_if_not_exists()
 
+    def generate_otp(self):
+        # Generate a random 6-digit OTP
+        return ''.join(random.choices(string.digits, k=6))
+
     def _setup_logging(self):
         logging.basicConfig(filename="authentication.log",
                             level=logging.INFO,
                             format="%(asctime)s - %(levelname)s - %(message)s")
-
         
 
     def _create_table_if_not_exists(self):
@@ -173,12 +177,52 @@ class AuthenticationSystem():
 
     # Function to handle registration
     def register_user_gui(self, username, password):
+        # Generate an OTP and store it for the user
+        otp = self.generate_otp()
+        self.user_otp[username] = otp
+
         self.register_user(username, password)
         messagebox.showinfo("Registration", "User registered successfully.")
 
     # Function to handle authentication
-    def authenticate_user_gui(self, username, password):        
-        if self.authenticate_user(username, password):
-            messagebox.showinfo("Authentication", "Authentication successful!")
+    def authenticate_user_gui(self):
+        username = self.username_entry.get()
+        password = getpass.getpass("Enter password: ")
+
+        # Check if the user exists and get stored OTP
+        if self.user_exists(username):
+            stored_otp = self.user_otp.get(username)
+            entered_otp = input("Enter OTP: ")
+
+            stored_password_hash = self._hash_password(password)
+            entered_password_hash = self._hash_password(password + stored_otp)
+
+            if entered_password_hash == stored_password_hash and entered_otp == stored_otp:
+                logging.info(f'Authentication successful for user: {username}')
+                messagebox.showinfo("Authentication", "Authentication successful!")
+            else:
+                logging.warning(f'Authentication failed for user: {username}')
+                messagebox.showerror("Authentication", "Authentication failed.")
         else:
-            messagebox.showerror("Authentication", "Authentication failed.")
+            logging.warning(f'User not found: {username}')
+            messagebox.showerror("Authentication", "User not found.")
+
+    # Function to handle password recovery simulation
+    def reset_password_gui(self):
+        username = self.username_entry.get()
+        
+        if self.user_exists(username):
+            new_password = getpass.getpass("Enter a new password: ")
+            self.update_password(username, new_password)
+            messagebox.showinfo("Password Reset", "Password reset successfully.")
+        else:
+            messagebox.showerror("Password Reset", "User not found. Invalid username.")
+
+    # Function to check if user exists
+    def user_exists(self, username):
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('SELECT 1 FROM users WHERE username = ?', (username,))
+        result = cursor.fetchone()
+        conn.close()
+        return result is not None

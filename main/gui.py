@@ -27,6 +27,10 @@ def gui():
     authenticate_button = tk.Button(root, text="Authenticate", command=auth_system.authenticate_user_gui(username, password))
     authenticate_button.pack()
 
+    # Create a button for password reset
+    reset_password_button = tk.Button(root, text="Reset Password", command=auth_system.reset_password_gui)
+    reset_password_button.pack()
+
     root.mainloop()
 
 if __name__ == "__main__":
